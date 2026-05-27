@@ -138,3 +138,57 @@ class TestRunPipeline:
         _, conn = open_db(repo)
         r = conn.execute("MATCH (p:Project) RETURN count(p)")
         assert r.get_next()[0] >= 2
+
+
+class TestMnemoignore:
+    """Tests for user-supplied .mnemoignore additions to IGNORE_DIRS."""
+
+    def test_mnemoignore_excludes_named_dir(self, repo):
+        # 'data' is not in the default IGNORE_DIRS, so without .mnemoignore
+        # it would be scanned.
+        data_dir = repo / "data"
+        data_dir.mkdir()
+        (data_dir / "leak.py").write_text("# should be skipped\n")
+        (repo / ".mnemoignore").write_text("data\n")
+
+        files = phase_scan(repo)
+        paths = {f.path for f in files}
+        assert "data/leak.py" not in paths
+        # Sanity: the file is there, we just skipped it via .mnemoignore.
+        assert (data_dir / "leak.py").exists()
+
+    def test_mnemoignore_tolerates_comments_and_blanks(self, repo):
+        (repo / "logs").mkdir()
+        (repo / "logs" / "trace.py").write_text("# noisy\n")
+        (repo / "backups").mkdir()
+        (repo / "backups" / "old.py").write_text("# stale\n")
+        (repo / ".mnemoignore").write_text(
+            "# user ignore list\n"
+            "\n"
+            "logs/\n"
+            "  backups  \n"
+        )
+
+        files = phase_scan(repo)
+        paths = {f.path for f in files}
+        assert not any(p.startswith("logs/") for p in paths)
+        assert not any(p.startswith("backups/") for p in paths)
+
+    def test_defaults_still_apply_without_mnemoignore(self, repo):
+        # No .mnemoignore present — node_modules / .git must still be skipped.
+        assert not (repo / ".mnemoignore").exists()
+        files = phase_scan(repo)
+        paths = {f.path for f in files}
+        assert not any("node_modules" in p for p in paths)
+        assert not any(".git" in p for p in paths)
+
+    def test_mnemoignore_also_filters_detect_projects(self, repo):
+        # A nested project should not be discovered if its parent is ignored.
+        nested = repo / "data" / "sub_project"
+        nested.mkdir(parents=True)
+        (nested / "package.json").write_text('{"name": "should-not-appear"}')
+        (repo / ".mnemoignore").write_text("data\n")
+
+        projects = detect_projects(repo)
+        names = {p.name for p in projects}
+        assert "should-not-appear" not in names

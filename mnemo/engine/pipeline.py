@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..config import IGNORE_DIRS, SUPPORTED_EXTENSIONS
+from ..config import IGNORE_DIRS, SUPPORTED_EXTENSIONS, ignore_dirs_for
 
 from .db import open_db, init_schema, reset_db
 
@@ -211,9 +211,10 @@ def phase_scan(repo_root: Path) -> list[FileInfo]:
     """Single os.walk pass — collect all source files with hashes."""
     ext_to_lang = {ext: lang for ext, lang in SUPPORTED_EXTENSIONS.items()}
     files: list[FileInfo] = []
+    ignore = ignore_dirs_for(repo_root)
 
     for dirpath, dirnames, filenames in os.walk(repo_root):
-        dirnames[:] = [d for d in dirnames if d not in IGNORE_DIRS]
+        dirnames[:] = [d for d in dirnames if d not in ignore]
         for filename in filenames:
             ext = None
             for e in ext_to_lang:
@@ -259,9 +260,10 @@ _CSPROJ_EXT = ".csproj"
 def detect_projects(repo_root: Path) -> list[ProjectInfo]:
     """Detect sub-projects by manifest files (package.json, .csproj, etc.)."""
     projects: list[ProjectInfo] = []
+    ignore = ignore_dirs_for(repo_root)
 
     for dirpath, dirnames, filenames in os.walk(repo_root):
-        dirnames[:] = [d for d in dirnames if d not in IGNORE_DIRS]
+        dirnames[:] = [d for d in dirnames if d not in ignore]
         rel_dir = str(Path(dirpath).relative_to(repo_root))
         if rel_dir == ".":
             rel_dir = ""

@@ -575,6 +575,27 @@ mnemo remember "content" [-c CAT]# Store a memory
 mnemo tool NAME [--args]         # Call any MCP tool from CLI
 ```
 
+### Customizing What Gets Indexed
+
+Mnemo skips a built-in set of heavy/non-source directories during indexing
+(`node_modules`, `.venv`, `dist`, `build`, etc. — see `mnemo/config.py` for
+the full list).
+
+To skip additional directories in a specific repo, drop a `.mnemoignore`
+file at the repo root with one directory name per line:
+
+```
+# Heavy dirs to exclude from indexing
+data
+logs
+backups
+```
+
+Lines are matched by exact directory basename, anywhere in the tree (same
+semantics as the built-in list). Blank lines and `#` comments are ignored.
+Trailing slashes are tolerated. Glob / `.gitignore` semantics are not
+supported yet — patterns are basenames only.
+
 ---
 
 ## Contributing
