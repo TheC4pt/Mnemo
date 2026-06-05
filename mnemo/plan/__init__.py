@@ -311,6 +311,63 @@ def auto_detect_completion(repo_root: Path, text: str) -> str | None:
     return None
 
 
+def _get_active_antigravity_brain() -> Path | None:
+    brain_dir = Path.home() / ".gemini" / "antigravity" / "brain"
+    if not brain_dir.exists():
+        return None
+    try:
+        subdirs = [d for d in brain_dir.iterdir() if d.is_dir()]
+        if not subdirs:
+            return None
+        # Sort by modification time
+        subdirs.sort(key=lambda d: d.stat().st_mtime, reverse=True)
+        return subdirs[0]
+    except Exception:
+        return None
+
+
+def _sync_antigravity_task_md(plans: list[dict]) -> None:
+    """Sync plans to active Antigravity's task.md."""
+    brain_path = _get_active_antigravity_brain()
+    if not brain_path:
+        return
+    task_md = brain_path / "task.md"
+
+    # Build the Mnemo Tasks section
+    section_lines = ["\n## Mnemo Tasks\n"]
+    for plan in plans:
+        for task in plan.get("tasks", []):
+            check = "x" if task["status"] == "done" else " "
+            section_lines.append(f"- [{check}] `{task['id']}` {task['title']}")
+    section_lines.append("")
+    new_section = "\n".join(section_lines)
+
+    if not task_md.exists():
+        try:
+            task_md.write_text(f"# Tasks\n{new_section}", encoding="utf-8")
+        except Exception:
+            pass
+        return
+
+    try:
+        content = task_md.read_text(encoding="utf-8")
+        marker_start = "## Mnemo Tasks"
+        if marker_start in content:
+            start_idx = content.index(marker_start)
+            rest = content[start_idx + len(marker_start):]
+            next_heading = re.search(r'\n## [^M]', rest)  # Next ## that isn't "Mnemo Tasks"
+            if next_heading:
+                end_idx = start_idx + len(marker_start) + next_heading.start()
+                content = content[:start_idx] + new_section.strip() + "\n\n" + content[end_idx:]
+            else:
+                content = content[:start_idx] + new_section.strip() + "\n"
+        else:
+            content = content.rstrip() + "\n" + new_section
+        task_md.write_text(content, encoding="utf-8")
+    except Exception:
+        pass
+
+
 def _sync_tasks_md(repo_root: Path, plans: list[dict]) -> None:
     """Sync plans to .mnemo/TASKS.md."""
     from ..config import mnemo_path
@@ -335,6 +392,7 @@ def _sync_tasks_md(repo_root: Path, plans: list[dict]) -> None:
 
     if not tasks_md.exists():
         tasks_md.write_text(f"# Mnemo Task List\n{new_section}", encoding="utf-8")
+        _sync_antigravity_task_md(plans)
         return
 
     content = tasks_md.read_text(encoding="utf-8")
@@ -356,6 +414,7 @@ def _sync_tasks_md(repo_root: Path, plans: list[dict]) -> None:
         content = content.rstrip() + "\n" + new_section
 
     tasks_md.write_text(content, encoding="utf-8")
+    _sync_antigravity_task_md(plans)
 
 
 def save_template(repo_root: Path, plan_id: str, name: str) -> str:

@@ -66,9 +66,9 @@ def search_knowledge(repo_root: Path, query: str) -> str:
                     relevant_lines.append("---")
 
             if relevant_lines:
-                name = md_file.relative_to(kdir)
+                name = md_file.relative_to(kdir).as_posix()
                 excerpt = "\n".join(relevant_lines[:50])
-                results.append((str(name), excerpt))
+                results.append((name, excerpt))
 
     if chunks:
         index_chunks(repo_root, "knowledge", chunks)
@@ -84,7 +84,7 @@ def search_knowledge(repo_root: Path, query: str) -> str:
 
     if not results:
         # Return all file names as suggestions
-        files = [str(f.relative_to(kdir)) for f in kdir.rglob("*.md")]
+        files = [f.relative_to(kdir).as_posix() for f in kdir.rglob("*.md")]
         return f"No results for '{query}'. Available knowledge files: {', '.join(files)}"
 
     lines = [f"# Knowledge: '{query}'\n"]
@@ -104,7 +104,7 @@ def list_knowledge(repo_root: Path) -> str:
 
     lines = ["# Knowledge Base\n"]
     for md_file in sorted(kdir.rglob("*.md")):
-        name = md_file.relative_to(kdir)
+        name = md_file.relative_to(kdir).as_posix()
         try:
             content = md_file.read_text()
             # Get first heading or first line

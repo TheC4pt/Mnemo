@@ -178,7 +178,60 @@ def install_hooks(repo_root: Path, client: str = "git") -> str:
         return _install_kiro_hooks(repo_root)
     elif client == "claude-code":
         return _install_claude_hooks(repo_root)
+    elif client == "antigravity":
+        return _install_antigravity_hooks(repo_root)
     return _install_git_hooks(repo_root)
+
+
+def _install_antigravity_hooks(repo_root: Path) -> str:
+    """Export tool schemas to Antigravity 2.0 MCP configuration directory."""
+    import json
+    from ..tool_registry import all_tools
+
+    mcp_dir = Path.home() / ".gemini" / "antigravity" / "mcp" / "mnemo"
+    try:
+        mcp_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:
+        return f"Warning: Could not create Antigravity MCP directory {mcp_dir}: {exc}"
+
+    # Export schemas
+    exported = []
+    for tool_def in all_tools():
+        name = tool_def["name"]
+        schema_dict = {
+            "name": name,
+            "description": tool_def["description"],
+            "parameters": {
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                **tool_def["inputSchema"]
+            }
+        }
+        schema_path = mcp_dir / f"{name}.json"
+        try:
+            schema_path.write_text(json.dumps(schema_dict, indent=2), encoding="utf-8")
+            exported.append(name)
+        except Exception as exc:
+            return f"Warning: Failed to write schema for {name} to {schema_path}: {exc}"
+
+    # Write instructions.md
+    instructions_path = mcp_dir / "instructions.md"
+    instructions_content = """# Mnemo — Persistent Memory for Antigravity
+
+This directory contains individual tool schemas automatically exported by Mnemo during initialization.
+
+## Best Practices & Guidelines for Antigravity
+
+1. **Active Plan Sync**: Check the plan status at session start via `mnemo_plan` with `action="status"`. Whenever completing tasks that correspond to checkbox items in `task.md`, call `mnemo_plan` with `action="done"`.
+2. **Search Before Requesting**: Before asking the user for codebase details or patterns, search memory via `mnemo_search_memory` first.
+3. **Capture Learnings**: Call `mnemo_remember` to record bug resolutions, conventions, and design decisions.
+4. **Architectural Decisions**: Use `mnemo_decide` for critical engineering/architectural choices. These choices are pinned permanently and are not subject to memory decay.
+"""
+    try:
+        instructions_path.write_text(instructions_content, encoding="utf-8")
+    except Exception:
+        pass
+
+    return f"Exported {len(exported)} tool schemas and instructions to {mcp_dir}"
 
 
 def _install_kiro_hooks(repo_root: Path) -> str:

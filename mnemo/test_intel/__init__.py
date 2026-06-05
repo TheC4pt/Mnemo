@@ -19,7 +19,7 @@ def build_test_map(repo_root: Path) -> dict[str, list[str]]:
     for cs_file in repo_root.rglob("*.cs"):
         if _should_ignore(cs_file):
             continue
-        rel = str(cs_file.relative_to(repo_root))
+        rel = cs_file.relative_to(repo_root).as_posix()
         if "Test" in rel:
             test_files.append(cs_file)
         else:
@@ -30,21 +30,21 @@ def build_test_map(repo_root: Path) -> dict[str, list[str]]:
 
     for source in source_files:
         source_name = source.stem  # e.g. "AuthorizationService"
-        source_rel = str(source.relative_to(repo_root))
+        source_rel = source.relative_to(repo_root).as_posix()
         matching_tests = []
 
         for test in test_files:
             test_name = test.stem
             # Convention: FooTests.cs tests Foo.cs
             if source_name in test_name:
-                matching_tests.append(str(test.relative_to(repo_root)))
+                matching_tests.append(test.relative_to(repo_root).as_posix())
                 continue
 
             # Check if test imports/uses the source class
             try:
                 content = test.read_text(errors="replace")
                 if source_name in content:
-                    matching_tests.append(str(test.relative_to(repo_root)))
+                    matching_tests.append(test.relative_to(repo_root).as_posix())
             except (OSError, PermissionError):
                 continue
 

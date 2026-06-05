@@ -133,7 +133,7 @@ def resolve_calls(
         with open(calls_csv, "w", newline="") as f:
             csv.writer(f).writerows(valid_calls)
         try:
-            conn.execute(f'COPY CALLS FROM "{calls_csv}"')
+            conn.execute(f'COPY CALLS FROM "{calls_csv.as_posix()}"')
         except RuntimeError:
             # Fallback: insert one by one, skip failures
             for row in valid_calls:

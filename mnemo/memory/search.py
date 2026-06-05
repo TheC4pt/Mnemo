@@ -213,7 +213,7 @@ def lookup(repo_root: Path, query: str) -> str:
         for filepath in repo_root.rglob(f"*{ext}"):
             if _should_ignore(filepath) or filepath.stat().st_size > MAX_FILE_SIZE:
                 continue
-            rel = str(filepath.relative_to(repo_root))
+            rel = filepath.relative_to(repo_root).as_posix()
             if query_lower not in rel.lower():
                 continue
             try:

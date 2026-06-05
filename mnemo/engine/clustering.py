@@ -156,7 +156,7 @@ def _store_communities(conn: Any, G: nx.Graph, communities: list[set]) -> int:
         comm_csv = tmp_path / "communities.csv"
         with open(comm_csv, "w", newline="") as f:
             csv.writer(f).writerows(community_data)
-        conn.execute(f'COPY Community FROM "{comm_csv}"')
+        conn.execute(f'COPY Community FROM "{comm_csv.as_posix()}"')
 
         class_members = [[row[1], row[2]] for row in membership_rows if row[0] == "class"]
         if class_members:
@@ -164,7 +164,7 @@ def _store_communities(conn: Any, G: nx.Graph, communities: list[set]) -> int:
             with open(cm_csv, "w", newline="") as f:
                 csv.writer(f).writerows(class_members)
             try:
-                conn.execute(f'COPY MEMBER_OF FROM "{cm_csv}"')
+                conn.execute(f'COPY MEMBER_OF FROM "{cm_csv.as_posix()}"')
             except RuntimeError:
                 pass
 
@@ -174,7 +174,7 @@ def _store_communities(conn: Any, G: nx.Graph, communities: list[set]) -> int:
             with open(fm_csv, "w", newline="") as f:
                 csv.writer(f).writerows(fn_members)
             try:
-                conn.execute(f'COPY FN_MEMBER_OF FROM "{fm_csv}"')
+                conn.execute(f'COPY FN_MEMBER_OF FROM "{fm_csv.as_posix()}"')
             except RuntimeError:
                 pass
 

@@ -65,6 +65,13 @@ CLIENTS: dict[str, ClientTarget] = {
         context_file=".gemini/MNEMO.md",
         context_label="instructions",
     ),
+    "antigravity": ClientTarget(
+        key="antigravity",
+        display_name="Antigravity",
+        mcp_config_path=Path.home() / ".gemini" / "antigravity" / "mcp_config.json",
+        context_file=".gemini/MNEMO.md",
+        context_label="instructions",
+    ),
     "windsurf": ClientTarget(
         key="windsurf",
         display_name="Windsurf",

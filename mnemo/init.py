@@ -223,6 +223,9 @@ def init(repo_root: Path, client: str = DEFAULT_CLIENT) -> str:
         elif target.key == "claude-code":
             result = install_hooks(repo_root, "claude-code")
             lines.append(f"- {result}")
+        elif target.key == "antigravity":
+            result = install_hooks(repo_root, "antigravity")
+            lines.append(f"- {result}")
 
     if client == DEFAULT_CLIENT:
         lines.append("")

@@ -237,7 +237,7 @@ def phase_scan(repo_root: Path) -> list[FileInfo]:
             except (OSError, PermissionError):
                 continue
 
-            rel = str(filepath.relative_to(repo_root))
+            rel = filepath.relative_to(repo_root).as_posix()
             h = hashlib.sha256(content).hexdigest()[:16]
             files.append(FileInfo(path=rel, language=ext_to_lang[ext], size=size, hash=h))
 
@@ -264,7 +264,7 @@ def detect_projects(repo_root: Path) -> list[ProjectInfo]:
 
     for dirpath, dirnames, filenames in os.walk(repo_root):
         dirnames[:] = [d for d in dirnames if d not in ignore]
-        rel_dir = str(Path(dirpath).relative_to(repo_root))
+        rel_dir = Path(dirpath).relative_to(repo_root).as_posix()
         if rel_dir == ".":
             rel_dir = ""
 
@@ -313,7 +313,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
             w = csv.writer(f)
             for fi in files:
                 w.writerow([fi.path, fi.language, fi.hash, fi.size])
-        conn.execute(f'COPY File FROM "{file_csv}"')
+        conn.execute(f'COPY File FROM "{file_csv.as_posix()}"')
         nodes += len(files)
 
         # --- Folder nodes ---
@@ -328,7 +328,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
                 w = csv.writer(f)
                 for folder in sorted(folders):
                     w.writerow([folder])
-            conn.execute(f'COPY Folder FROM "{folder_csv}"')
+            conn.execute(f'COPY Folder FROM "{folder_csv.as_posix()}"')
             nodes += len(folders)
 
         # --- CONTAINS edges (Folder → File) ---
@@ -340,7 +340,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
                 if len(parts) > 1:
                     parent = "/".join(parts[:-1])
                     w.writerow([parent, fi.path])
-        conn.execute(f'COPY CONTAINS FROM "{contains_csv}"')
+        conn.execute(f'COPY CONTAINS FROM "{contains_csv.as_posix()}"')
 
         # --- Symbol nodes from parse results ---
         # Classes
@@ -358,7 +358,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
             cls_csv = tmp_path / "classes.csv"
             with open(cls_csv, "w", newline="") as f:
                 csv.writer(f, quoting=csv.QUOTE_ALL).writerows(class_rows)
-            conn.execute(f'COPY Class FROM "{cls_csv}"')
+            conn.execute(f'COPY Class FROM "{cls_csv.as_posix()}"')
             nodes += len(class_rows)
 
         # Functions
@@ -377,7 +377,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
             fn_csv = tmp_path / "functions.csv"
             with open(fn_csv, "w", newline="") as f:
                 csv.writer(f, quoting=csv.QUOTE_MINIMAL).writerows(func_rows)
-            conn.execute(f'COPY Function FROM "{fn_csv}" (PARALLEL=FALSE)')
+            conn.execute(f'COPY Function FROM "{fn_csv.as_posix()}" (PARALLEL=FALSE)')
             nodes += len(func_rows)
 
         # Methods
@@ -399,7 +399,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
             with open(m_csv, "w", newline="") as f:
                 w = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
                 w.writerows(method_rows)
-            conn.execute(f'COPY Method FROM "{m_csv}" (PARALLEL=FALSE)')
+            conn.execute(f'COPY Method FROM "{m_csv.as_posix()}" (PARALLEL=FALSE)')
             nodes += len(method_rows)
 
         # --- Edges: FILE_DEFINES_CLASS, FILE_DEFINES_FUNCTION ---
@@ -409,7 +409,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
                 w = csv.writer(f)
                 for row in class_rows:
                     w.writerow([row[2], row[0]])  # file_path, class_id
-            conn.execute(f'COPY FILE_DEFINES_CLASS FROM "{def_cls_csv}"')
+            conn.execute(f'COPY FILE_DEFINES_CLASS FROM "{def_cls_csv.as_posix()}"')
             edges += len(class_rows)
 
         if func_rows:
@@ -418,7 +418,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
                 w = csv.writer(f)
                 for row in func_rows:
                     w.writerow([row[2], row[0]])  # file_path, func_id
-            conn.execute(f'COPY FILE_DEFINES_FUNCTION FROM "{def_fn_csv}"')
+            conn.execute(f'COPY FILE_DEFINES_FUNCTION FROM "{def_fn_csv.as_posix()}"')
             edges += len(func_rows)
 
         if method_rows:
@@ -428,7 +428,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
                 for row in method_rows:
                     cls_id = f"{row[3]}:{row[2]}"  # file:class_name
                     w.writerow([cls_id, row[0]])
-            conn.execute(f'COPY HAS_METHOD FROM "{has_method_csv}"')
+            conn.execute(f'COPY HAS_METHOD FROM "{has_method_csv.as_posix()}"')
             edges += len(method_rows)
 
         # --- IMPORTS edges ---
@@ -446,7 +446,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
             with open(imp_csv, "w", newline="") as f:
                 csv.writer(f).writerows(import_rows)
             try:
-                conn.execute(f'COPY IMPORTS FROM "{imp_csv}"')
+                conn.execute(f'COPY IMPORTS FROM "{imp_csv.as_posix()}"')
                 edges += len(import_rows)
             except RuntimeError:
                 pass  # Duplicate or missing node — skip
@@ -459,7 +459,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
                 for p in projects:
                     pid = f"project:{p.path or 'root'}"
                     w.writerow([pid, p.name, p.language, p.manifest, p.path])
-            conn.execute(f'COPY Project FROM "{proj_csv}"')
+            conn.execute(f'COPY Project FROM "{proj_csv.as_posix()}"')
             nodes += len(projects)
 
             # Assign files to their nearest project
@@ -474,7 +474,7 @@ def phase_load(repo_root: Path, files: list[FileInfo], results: list[ParseResult
                 with open(pc_csv, "w", newline="") as f:
                     csv.writer(f).writerows(proj_contains_rows)
                 try:
-                    conn.execute(f'COPY PROJECT_CONTAINS FROM "{pc_csv}"')
+                    conn.execute(f'COPY PROJECT_CONTAINS FROM "{pc_csv.as_posix()}"')
                     edges += len(proj_contains_rows)
                 except RuntimeError:
                     pass

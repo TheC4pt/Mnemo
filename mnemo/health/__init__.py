@@ -10,8 +10,20 @@ from ..config import mnemo_path
 
 def system_health(repo_root: Path) -> dict:
     """Return system health metrics from engine and memory."""
-    import resource
-    mem_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 * 1024)
+    try:
+        import resource
+        import sys
+        if sys.platform == "darwin":
+            mem_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 * 1024)
+        else:
+            mem_mb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+    except ImportError:
+        try:
+            import psutil
+            process = psutil.Process()
+            mem_mb = process.memory_info().rss / (1024 * 1024)
+        except ImportError:
+            mem_mb = 0.0
 
     mnemo_dir = mnemo_path(repo_root)
     memories = 0

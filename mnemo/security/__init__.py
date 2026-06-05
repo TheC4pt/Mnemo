@@ -72,7 +72,7 @@ def check_security(repo_root: Path, file_path: str = "") -> str:
             for ext in SUPPORTED_EXTENSIONS:
                 for fp in repo_root.rglob(f"*{ext}"):
                     if not should_ignore(fp) and fp.stat().st_size <= 200_000:
-                        files.append(str(fp.relative_to(repo_root)))
+                        files.append(fp.relative_to(repo_root).as_posix())
 
     for rel in files:
         fp = repo_root / rel

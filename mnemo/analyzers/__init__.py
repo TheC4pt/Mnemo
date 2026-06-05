@@ -77,7 +77,7 @@ def roslyn_to_mnemo_format(roslyn_results: list[dict[str, Any]], repo_root: Path
 
         # Make path relative to repo root
         try:
-            rel = str(Path(filepath).relative_to(repo_root))
+            rel = Path(filepath).relative_to(repo_root).as_posix()
         except ValueError:
             rel = filepath
 
